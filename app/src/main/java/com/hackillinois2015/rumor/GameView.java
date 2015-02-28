@@ -20,9 +20,11 @@ public class GameView extends View {
         super(context, attrs, defStyleAttr);
     }
 
+
     final static double d60_DEGREES = Math.PI/3;
-    final static double dHexagonSide = 1;
+    final static double dHexagonSide = 10;
     final static double dHexagonUseful = dHexagonSide*Math.sqrt(3);
+    final static double dRootThree = Math.sqrt(3);
 
     static <T> void print(T[] arr)
     {
@@ -31,10 +33,28 @@ public class GameView extends View {
             System.out.print(x);
             System.out.print("  ");
         }
-        System.out.print(System.lineSeparator());
+        System.out.print("\n");
     }
 
-    static Integer[] xyToHexagon(int x,int y)
+    static Integer[] xyToHexagon(int x, int y)
+    {
+        Integer[] approx = xyToUV(x,y);
+        double dx = (approx[0]+approx[1]*Math.cos(d60_DEGREES))*dHexagonUseful;
+        double dy = approx[1]*Math.sin(d60_DEGREES)*dHexagonUseful;
+        double x2 = x-dx;
+        double y2 = y-dy;
+        if(y2<(-x2/dRootThree+2*dHexagonSide)&&x2<dRootThree*dHexagonSide)
+            ;
+        else
+        {
+            if(y2<=x2/dRootThree)
+                approx[0]+=1;
+            else approx[1]+=1;
+        }
+        return approx;
+    }
+
+    static Integer[] xyToUV(int x,int y)
     {
         double u=x-y/Math.tan(d60_DEGREES);
         double v=y/Math.sin(d60_DEGREES);
