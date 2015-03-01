@@ -1,15 +1,18 @@
 package com.hackillinois2015.rumor;
 
+import android.app.Activity;
 import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Paint;
 import android.graphics.Point;
+import android.opengl.GLSurfaceView;
 import android.support.v7.app.ActionBarActivity;
 import android.os.Bundle;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.view.Window;
 import android.view.WindowManager;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
@@ -17,34 +20,38 @@ import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
 
 
-public class GameActivity extends ActionBarActivity {
+public class GameActivity extends Activity {
+
+    GLSurfaceView surfaceView;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        
+
+        requestWindowFeature(Window.FEATURE_NO_TITLE);
         getWindow().setFlags(
                 WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED,
                 WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED);
-
         View decorView = getWindow().getDecorView();
-        // Hide the status bar.
         int uiOptions = View.SYSTEM_UI_FLAG_FULLSCREEN;
         decorView.setSystemUiVisibility(uiOptions);
-        //getActionBar().hide();
+
         setContentView(R.layout.activity_game);
 
-        Point screenSize = new Point();
-        getWindowManager().getDefaultDisplay().getSize(screenSize);
-        /*
-        if(map==null)
-            map=loadDrawable(R.drawable.map,screenSize.x,screenSize.y);
-        ((ImageView)findViewById(R.id.mapImg)).setImageBitmap(map);
-        ((RelativeLayout)findViewById(R.id.gameActivityLL)).bringChildToFront(findViewById(R.id.gameView));
-        findViewById(R.id.gameActivityLL).invalidate();
-        */
+        surfaceView = (GLSurfaceView) findViewById(R.id.gameView);
     }
 
+    @Override
+    protected void onResume() {
+        super.onResume();
+        surfaceView.onResume();
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        surfaceView.onPause();
+    }
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
