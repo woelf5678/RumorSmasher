@@ -1,6 +1,9 @@
 package com.hackillinois2015.rumor;
 
 import android.content.Context;
+import android.content.res.Resources;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
@@ -11,6 +14,9 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.widget.Toast;
 
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.ObjectInputStream;
 import java.util.Random;
 
 /**
@@ -31,16 +37,78 @@ public class GameView extends View {
 
     Random random =  new Random();
 
+    Bitmap map = null;
     float cameraX=0, cameraY=0;
 
+    double loadDrawable_xScale;
+    double loadDrawable_yScale;
+    int loadDrawable_width, loadDrawable_height;
+    public android.graphics.Bitmap loadDrawable(int resID, int displayWidth, int displayHeight) {
+        Resources res = getResources();
+        BitmapFactory.Options options = new BitmapFactory.Options();
+        options.inJustDecodeBounds = true; //First, decode the image's header without loading its content
+        BitmapFactory.decodeResource(res,resID,options);
+
+        loadDrawable_width = options.outWidth;
+        loadDrawable_height = options.outHeight;
+        loadDrawable_xScale =  (double)options.outWidth/displayWidth;
+        loadDrawable_yScale =  (double)options.outHeight/displayHeight;
+
+        int inZoomRatio = 1;
+        if(options.outHeight>displayHeight || options.outWidth>displayWidth)
+            while ((options.outHeight/2/inZoomRatio)>displayHeight
+                    &&(options.outWidth/2/inZoomRatio)>displayWidth)
+                inZoomRatio*=2;     //inZoomRatio had better be a power of 2
+
+        options.inSampleSize = inZoomRatio; //zoom out
+        options.inJustDecodeBounds = false;
+
+        Bitmap ans=BitmapFactory.decodeResource(res,resID,options);
+        return ans;
+    }
+
+    /**
+     * Draw the hexagons and the map.
+     * The size of the hexagons should be large enough to be able to cut the map into 611 pieces..
+     * @param canvas
+     */
     @Override
     protected void onDraw(Canvas canvas) {
         super.onDraw(canvas);
-        HexCoord test = new HexCoord();
-        for(int i=-3; i<3; i++) for(int j=-3; j<3; j++) {
-            test.update(i, j, 0, 0);
-            test.drawXY(canvas, cameraX, cameraY, Color.rgb(random.nextInt(255),random.nextInt(255),random.nextInt(255)));
+
+        canvas.translate(-cameraX,-cameraY);
+
+        if(map==null)
+            map=loadDrawable(R.drawable.map, getWidth(), getHeight());
+        canvas.drawBitmap(map, 0, 0, new Paint());
+
+        double xScale = loadDrawable_xScale;
+        double yScale = loadDrawable_yScale;
+        int MAP_HEIGHT = loadDrawable_height;
+        int MAP_WIDTH = loadDrawable_width;
+
+        if(xScale>yScale) dHexagonSide = 94/xScale;
+        else dHexagonSide = 94/yScale;
+
+
+        numHexagonY = MAP_HEIGHT/94/3*2 + 1;
+        numHexagonX = (int)(MAP_WIDTH/94/dRootThree) + 1;
+        if(isHexFilled == null)
+        {
+            try {
+                ObjectInputStream in = new ObjectInputStream(getResources().getAssets().open("hasHex.map"));
+                isHexFilled = (boolean[][])in.readObject();
+            } catch (Exception err) {
+                throw (RuntimeException)(new RuntimeException("Cannot open Maps!").initCause(err));
+            }
         }
+
+        HexCoord test = new HexCoord();
+        for(int i=-numHexagonY; i<numHexagonX; i++) for(int j=0; j<numHexagonY; j++) {
+            test.update(i, j, 0, 0);
+            test.drawXY(canvas, 0, 0, Color.argb(100,0,0,0));
+        }
+
     }
 
 
@@ -99,9 +167,14 @@ public class GameView extends View {
         return returnVal;
     }
 
+
+    boolean isHexFilled[][] = null;
+    double dHexagonSide = 30;
+    int numHexagonX, numHexagonY;
+    double dHexagonUseful()
+    { return dHexagonSide*dRootThree;}
+
     final static double d60_DEGREES = Math.PI/3;
-    final static double dHexagonSide = 250;
-    final static double dHexagonUseful = dHexagonSide*Math.sqrt(3);
     final static double dRootThree = Math.sqrt(3);
 
     static <T> void print(T[] arr)
@@ -114,7 +187,7 @@ public class GameView extends View {
         System.out.print("\n");
     }
 
-    static class HexCoord
+    class HexCoord
     {
         public int x;
         public int y;
@@ -130,10 +203,10 @@ public class GameView extends View {
             this.dx = dx;
             this.dy = dy;
 
-            realX1 = (float)((x+y*Math.cos(d60_DEGREES))*dHexagonUseful);
-            realX3 = realX1 + (float)dHexagonUseful/2;
-            realX4 = realX1 + (float)dHexagonUseful;
-            realY1 = (float)(y*Math.sin(d60_DEGREES)*dHexagonUseful);
+            realX1 = (float)((x+y*Math.cos(d60_DEGREES))*dHexagonUseful());
+            realX3 = realX1 + (float)dHexagonUseful()/2;
+            realX4 = realX1 + (float)dHexagonUseful();
+            realY1 = (float)(y*Math.sin(d60_DEGREES)*dHexagonUseful());
             realY2 = realY1+(float)dHexagonSide;
             realY3 = realY2+(float)dHexagonSide/2;
             realY6 = realY1-(float)dHexagonSide/2;
@@ -155,12 +228,12 @@ public class GameView extends View {
         }
     }
 
-    static HexCoord xyToHexagon(int x, int y)
+    HexCoord xyToHexagon(int x, int y)
     {
         HexCoord ans = new HexCoord();
         Integer[] approx = xyToUV(x,y);
-        double dx = (approx[0]+approx[1]*Math.cos(d60_DEGREES))*dHexagonUseful;
-        double dy = approx[1]*Math.sin(d60_DEGREES)*dHexagonUseful;
+        double dx = (approx[0]+approx[1]*Math.cos(d60_DEGREES))*dHexagonUseful();
+        double dy = approx[1]*Math.sin(d60_DEGREES)*dHexagonUseful();
         double x2 = x-dx;
         double y2 = y-dy;
         if(y2<(-x2/dRootThree+2*dHexagonSide)&&x2<dRootThree*dHexagonSide)
@@ -174,11 +247,11 @@ public class GameView extends View {
         return ans;
     }
 
-    static Integer[] xyToUV(int x,int y)
+    Integer[] xyToUV(int x,int y)
     {
         double u=x-y/Math.tan(d60_DEGREES);
         double v=y/Math.sin(d60_DEGREES);
-        return new Integer[]{(int)Math.floor(u/dHexagonUseful), (int)Math.floor(v/dHexagonUseful)};
+        return new Integer[]{(int)Math.floor(u/dHexagonUseful()), (int)Math.floor(v/dHexagonUseful())};
     }
 
     static int floorDiv(int a, int b)
