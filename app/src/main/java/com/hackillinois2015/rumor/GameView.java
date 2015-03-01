@@ -300,9 +300,10 @@ public class GameView extends GLSurfaceView implements GLSurfaceView.Renderer {
         Matrix.orthoM(mProjectionMatrix, 0, left, right, bottom, top, near, far);
 
         float u = getHexagonSideInGLUnit();
+        dHexagonSide = 94.0/ORIGINAL_MAP_HEIGHT*ViewPortHeight;
         numHexagonY = ORIGINAL_MAP_HEIGHT/94/3*2 + 1;
         numHexagonX = (int)(ORIGINAL_MAP_WIDTH/94/dRootThree) + 1;
-        grids = new HexGroup(numHexagonX ,numHexagonY);
+        grids = new HexGroup(getResources(), numHexagonX ,numHexagonY);
     }
 
     HexGroup grids = null;
@@ -311,8 +312,8 @@ public class GameView extends GLSurfaceView implements GLSurfaceView.Renderer {
     public void onDrawFrame(GL10 glUnused)
     {
         GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT);
-        GLES20.glEnable (GLES20.GL_BLEND);
-        GLES20.glBlendFunc (GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA);
+        GLES20.glEnable(GLES20.GL_BLEND);
+        GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA);
 
         // Do a complete rotation every 10 seconds.
         long time = SystemClock.uptimeMillis() % 10000L;
@@ -321,12 +322,13 @@ public class GameView extends GLSurfaceView implements GLSurfaceView.Renderer {
         GLES20.glUniform1f(mBTextureHandle, 0.1f);
 
         Matrix.setIdentityM(mModelMatrix, 0);
-        Matrix.scaleM(mModelMatrix, 0, 2, 2, 2);
-        Matrix.translateM(mModelMatrix, 0, -1, -0.5f, 0);
+        Matrix.scaleM(mModelMatrix, 0, 2,2,0);
+        Matrix.translateM(mModelMatrix, 0, -XMAX()/2, -0.5f, 0);
+        //Matrix.scaleM(mModelMatrix, 0, 2, 2, 2);
+        //Matrix.translateM(mModelMatrix, 0, -1, -0.5f, 0);
         Matrix.translateM(mModelMatrix, 0, -cameraX*XMAX()/ViewPortWidth, cameraY*YMAX/ViewPortHeight, 0);
 
         drawMap();
-
         drawManyTriangles(grids.info, grids.numOfTrigs);
     }
 
@@ -430,22 +432,22 @@ public class GameView extends GLSurfaceView implements GLSurfaceView.Renderer {
         final float[] mapTrig = {
                 // X, Y, Z,
                 // R, G, B, A
-                mapMaxX, 0f, -0.5f,
+                mapMaxX, 0f, -0.001f,
                 1.0f, 0.0f, 0.0f, 1.0f,
 
-                mapMaxX, 1f, -0.5f,
+                mapMaxX, 1f, -0.001f,
                 0.0f, 0.0f, 1.0f, 1.0f,
 
-                0f, 1f, -0.5f,
+                0f, 1f, -0.001f,
                 0.0f, 1.0f, 0.0f, 1.0f,
 
-                0f, 0f, -0.5f,
+                0f, 0f, -0.001f,
                 1.0f, 1.0f, 0.0f, 1.0f,
 
-                mapMaxX, 0f, -0.5f,
+                mapMaxX, 0f, -0.001f,
                 0.0f, 1.0f, 1.0f, 1.0f,
 
-                0f, 1f, -0.5f,
+                0f, 1f, -0.001f,
                 1.0f, 0.0f, 1.0f, 1.0f};
 
         final float[] fMapUV = {
@@ -512,50 +514,6 @@ public class GameView extends GLSurfaceView implements GLSurfaceView.Renderer {
         return ans;
     }
 
-    /**
-     * Draw the hexagons and the map.
-     * The size of the hexagons should be large enough to be able to cut the map into 611 pieces..
-     * @param canvas
-     *
-    @Override
-    protected void onDraw(Canvas canvas) {
-        super.onDraw(canvas);
-
-        canvas.translate(-cameraX,-cameraY);
-
-        if(map==null)
-            map=loadDrawable(R.drawable.map, getWidth(), getHeight());
-        canvas.drawBitmap(map, 0, 0, new Paint());
-
-        double xScale = loadDrawable_xScale;
-        double yScale = loadDrawable_yScale;
-        int MAP_HEIGHT = loadDrawable_height;
-        int MAP_WIDTH = loadDrawable_width;
-
-        if(xScale>yScale) dHexagonSide = 94/xScale;
-        else dHexagonSide = 94/yScale;
-
-
-        numHexagonY = MAP_HEIGHT/94/3*2 + 1;
-        numHexagonX = (int)(MAP_WIDTH/94/dRootThree) + 1;
-        if(isHexFilled == null)
-        {
-            try {
-                ObjectInputStream in = new ObjectInputStream(getResources().getAssets().open("hasHex.map"));
-                isHexFilled = (boolean[][])in.readObject();
-            } catch (Exception err) {
-                //throw (RuntimeException)(new RuntimeException("Cannot open Maps!").initCause(err));
-            }
-        }
-
-        HexCoord test = new HexCoord();
-        for(int i=-numHexagonY; i<numHexagonX; i++) for(int j=0; j<numHexagonY; j++) {
-            test.update(i, j, 0, 0);
-            test.drawXY(canvas, 0, 0, Color.argb(100, 0, 0, 0));
-        }
-
-    }*/
-
 
     float downX;
     float downY;
@@ -567,19 +525,22 @@ public class GameView extends GLSurfaceView implements GLSurfaceView.Renderer {
         HexCoord hex;
         switch(event.getAction())
         {
-            case MotionEvent.ACTION_DOWN:
+            case MotionEvent.ACTION_DOWN: {
                 Log.e("action", "down");
-                downX=event.getX();
-                downY=event.getY();
+                downX = event.getX();
+                downY = event.getY();
 
-                /*
-                ans = "X="+event.getX()+"Y="+event.getY();
-                hex = xyToHexagon((int)event.getX(),(int)event.getY());
-                ans+=". HEX = ("+hex.x+","+hex.y+").";
-                Toast.makeText(getContext(),ans, Toast.LENGTH_SHORT).show();*/
+                float x = event.getX();
+                float y = event.getY();
+                ans = "X=" + (x + cameraX) + "Y=" + (y + cameraY);
+                hex = xyToHexagon((int) (x + cameraX), (int) (y + cameraY));
+                ans += ". HEX = (" + hex.x + "," + hex.y + ").";
+                Toast.makeText(getContext(), ans, Toast.LENGTH_SHORT).show();
+                grids.setColor(hex.x, hex.y, 1f, 0f, 0f, 0.6f);
 
-                returnVal=true;
+                returnVal = true;
                 break;
+            }
             case MotionEvent.ACTION_UP: {
                 Log.e("action", "up");
 
