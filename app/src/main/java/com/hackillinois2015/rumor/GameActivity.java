@@ -1,15 +1,33 @@
 package com.hackillinois2015.rumor;
 
+import android.app.Activity;
+
 import android.graphics.Color;
+import android.app.Activity;
+import android.content.res.Resources;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.graphics.Paint;
+import android.graphics.Point;
+import android.opengl.GLSurfaceView;
 import android.support.v7.app.ActionBarActivity;
 import android.os.Bundle;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.View;
+import android.view.Window;
+import android.view.WindowManager;
+import android.widget.FrameLayout;
+import android.widget.ImageView;
+import android.widget.LinearLayout;
+import android.widget.RelativeLayout;
 
 import java.util.Random;
 
 
-public class GameActivity extends ActionBarActivity {
+public class GameActivity extends Activity {
+
+    GLSurfaceView surfaceView;
 
     Random random = new Random();
     long lastTime=0, total=0, timer=0;
@@ -46,7 +64,7 @@ public class GameActivity extends ActionBarActivity {
                 if (timer % 60000 == 0) gainPts();
                 updateColor();
                 total = 0;
-                gameView.postInvalidate();
+                surfaceView.postInvalidate();
             }
         }
         int[] direc(int r, int x, int y){
@@ -167,13 +185,20 @@ public class GameActivity extends ActionBarActivity {
     }
 
     Thread updaterThread = null;
-    GameView gameView;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_game);
 
-        gameView = (GameView)findViewById(R.id.gameview);
+        requestWindowFeature(Window.FEATURE_NO_TITLE);
+        getWindow().setFlags(
+                WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED,
+                WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED);
+        View decorView = getWindow().getDecorView();
+        int uiOptions = View.SYSTEM_UI_FLAG_FULLSCREEN;
+        decorView.setSystemUiVisibility(uiOptions);
+
+        setContentView(R.layout.activity_game);
+        surfaceView = (GLSurfaceView) findViewById(R.id.gameView);
         if(updaterThread == null)
             updaterThread = new Thread(new GameUpdater());
         try {
@@ -183,6 +208,17 @@ public class GameActivity extends ActionBarActivity {
         }
     }
 
+    @Override
+    protected void onResume() {
+        super.onResume();
+        surfaceView.onResume();
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        surfaceView.onPause();
+    }
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
@@ -205,4 +241,25 @@ public class GameActivity extends ActionBarActivity {
 
         return super.onOptionsItemSelected(item);
     }
+
+/*
+    Bitmap map = null;
+    public android.graphics.Bitmap loadDrawable(int resID, int displayWidth, int displayHeight) {
+        Resources res = getResources();
+        BitmapFactory.Options options = new BitmapFactory.Options();
+        options.inJustDecodeBounds = true; //First, decode the image's header without loading its content
+        BitmapFactory.decodeResource(res,resID,options);
+
+        int inZoomRatio = 1;
+        if(options.outHeight>displayHeight || options.outWidth>displayWidth)
+            while ((options.outHeight/2/inZoomRatio)>displayHeight
+                    &&(options.outWidth/2/inZoomRatio)>displayWidth)
+                inZoomRatio*=2;     //inZoomRatio had better be a power of 2
+
+        options.inSampleSize = inZoomRatio; //zoom out
+        options.inJustDecodeBounds = false;
+
+        Bitmap ans=BitmapFactory.decodeResource(res,resID,options);
+        return ans;
+    }*/
 }
